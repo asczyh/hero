@@ -14,6 +14,7 @@ class MainPage(BasePage):
         if agree_buttons:
             agree_buttons[0].click()
     def click_skip_ad(self):
+        """跳过广告"""
         self.click_by_text("跳过")
     def click_search_box(self):
         """点击搜索框"""

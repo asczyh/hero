@@ -23,3 +23,19 @@ def get_driver():
 
     driver.implicitly_wait(settings.IMPLICITLY_WAIT)
     return driver
+
+
+def get_existing_mumu_driver():
+    """Attach Appium to the already-running MuMu screen without relaunching it."""
+    options = UiAutomator2Options()
+    options.platform_name = settings.PLATFORM_NAME
+    options.platform_version = settings.PLATFORM_VERSION
+    options.device_name = settings.DEVICE_NAME
+    options.automation_name = settings.AUTOMATION_NAME
+    options.no_reset = True
+    options.set_capability('appium:udid', settings.MUMU_DEVICE_UDID)
+    options.set_capability('appium:autoLaunch', False)
+
+    driver = webdriver.Remote(settings.APPIUM_SERVER_URL, options=options)
+    driver.implicitly_wait(0)
+    return driver

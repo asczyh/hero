@@ -14,3 +14,6 @@ class TestSearch:
 
         # 3. 输入搜索内容并回车
         main_page.input_search_text('Mili')
+
+
+        
