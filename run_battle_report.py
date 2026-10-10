@@ -21,7 +21,7 @@ def main() -> Path:
 
         page = BattleReportPage(driver)
         reader = OcrReader()
-        initial_lines = reader.read_lines(page.screenshot(), settings.REPORT_VIEWPORT)
+        initial_lines = reader.read_lines(page.screenshot(), settings.REPORT_OCR_VIEWPORT)
         if not any(re.search(r'第\s*1\s*回合', line) for line in initial_lines):
             raise RuntimeError('请先选择左侧“1”，并将战报停在第1回合开头，再运行脚本。')
 
@@ -30,7 +30,7 @@ def main() -> Path:
 
         for swipe_count in range(settings.REPORT_MAX_SWIPES + 1):
             lines = initial_lines if swipe_count == 0 else reader.read_lines(
-                page.screenshot(), settings.REPORT_VIEWPORT
+                page.screenshot(), settings.REPORT_OCR_VIEWPORT
             )
             added = append_unseen_lines(saved_lines, lines)
             print(f'画面 {swipe_count + 1}: OCR {len(lines)} 行，新增 {added} 行')

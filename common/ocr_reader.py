@@ -4,11 +4,34 @@ from __future__ import annotations
 
 import io
 import re
+import statistics
 from difflib import SequenceMatcher
+from dataclasses import dataclass
 from typing import Iterable
 
 from PIL import Image
 from rapidocr import RapidOCR
+
+
+@dataclass(frozen=True)
+class TextBox:
+    text: str
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+    @property
+    def center_x(self) -> float:
+        return (self.left + self.right) / 2
+
+    @property
+    def center_y(self) -> float:
+        return (self.top + self.bottom) / 2
+
+    @property
+    def height(self) -> float:
+        return self.bottom - self.top
 
 
 class OcrReader:
@@ -29,22 +52,121 @@ class OcrReader:
         if not result or not result.txts or result.boxes is None:
             return []
 
-        lines = []
+        boxes: list[TextBox] = []
         for box, text in zip(result.boxes, result.txts):
             clean = re.sub(r'\s+', ' ', str(text)).strip()
             if not clean or clean in {'简略战报', '收起战报', 'uv1-'}:
                 continue
             # Each box is four (x, y) points, relative to the cropped image.
-            y = sum(float(point[1]) for point in box) / len(box)
-            x = min(float(point[0]) for point in box)
-            lines.append((y, x, clean))
+            xs = [float(point[0]) for point in box]
+            ys = [float(point[1]) for point in box]
+            # The game clips partially visible log lines at the scroll-panel
+            # edges. Ignore those fragments; the overlapping next frame will
+            # capture the complete line.
+            if min(ys) < 20 or max(ys) > crop.height - 8:
+                continue
+            boxes.append(TextBox(clean, min(xs), min(ys), max(xs), max(ys)))
 
-        lines.sort(key=lambda item: (item[0], item[1]))
-        return [line for _, _, line in lines]
+        return _layout_text_boxes(boxes, crop.width)
+
+
+_METRIC_PATTERNS = {
+    '兵力': re.compile(r'兵力\s*[:：]?\s*([0-9,]+)'),
+    '杀敌': re.compile(r'杀敌\s*[:：]?\s*([0-9,]+)'),
+    '恢复': re.compile(r'恢复\s*[:：]?\s*([0-9,]+)'),
+}
+
+
+def _layout_text_boxes(boxes: list[TextBox], image_width: int) -> list[str]:
+    """Cluster OCR boxes by baseline, then join action-row metrics by geometry."""
+    if not boxes:
+        return []
+
+    boxes.sort(key=lambda item: (item.center_y, item.left))
+    box_indices = {id(box): index for index, box in enumerate(boxes)}
+    typical_height = statistics.median(max(1.0, box.height) for box in boxes)
+    row_tolerance = max(10.0, typical_height * 0.60)
+    rows: list[list[TextBox]] = []
+    for box in boxes:
+        if rows:
+            row_y = statistics.mean(item.center_y for item in rows[-1])
+            if abs(box.center_y - row_y) <= row_tolerance:
+                rows[-1].append(box)
+                continue
+        rows.append([box])
+
+    rows = [row for row in rows if not _is_non_report_row(row)]
+
+    action_rows: list[tuple[int, float, str]] = []
+    for row_index, row in enumerate(rows):
+        row_text = ' '.join(box.text for box in sorted(row, key=lambda item: item.left))
+        match = re.search(r'(.{0,24}开始行动)', row_text)
+        if match:
+            action_rows.append((row_index, statistics.mean(box.center_y for box in row), match.group(1).strip()))
+
+    consumed: set[int] = set()
+    output: list[tuple[float, str]] = []
+    # Metric labels can be detected with a slightly different vertical box
+    # than the action text. They are safe to match over a wider band because
+    # only labeled fields in the right column are considered.
+    metric_tolerance = max(28.0, typical_height * 1.30)
+
+    for action_index, action_y, action_text in action_rows:
+        action_row = rows[action_index]
+        action_x = min(box.left for box in action_row if '开始行动' in box.text) if any(
+            '开始行动' in box.text for box in action_row
+        ) else min(box.left for box in action_row)
+
+        nearby_metrics: list[tuple[int, TextBox]] = []
+        for row_index, row in enumerate(rows):
+            row_y = statistics.mean(box.center_y for box in row)
+            if abs(row_y - action_y) > metric_tolerance:
+                continue
+            for box_index, box in enumerate(boxes):
+                is_action_box = '开始行动' in box.text
+                is_right_column = box.left > action_x and box.center_x >= image_width * 0.58
+                if box in row and (is_right_column or is_action_box):
+                    if any(pattern.search(box.text) for pattern in _METRIC_PATTERNS.values()):
+                        nearby_metrics.append((box_index, box))
+
+        values: dict[str, str] = {}
+        for box_index, box in nearby_metrics:
+            for name, pattern in _METRIC_PATTERNS.items():
+                match = pattern.search(box.text)
+                if match:
+                    values[name] = match.group(1).replace(',', '')
+                    consumed.add(box_index)
+
+        metric_text = '  '.join(f'{name}:{values[name]}' for name in ('兵力', '杀敌', '恢复') if name in values)
+        output.append((action_y, f'{action_text}   {metric_text}'.rstrip()))
+
+    for row_index, row in enumerate(rows):
+        if any(index == row_index for index, _, _ in action_rows):
+            continue
+        text_parts = []
+        for box in sorted(row, key=lambda item: item.left):
+            box_index = box_indices[id(box)]
+            if box_index in consumed:
+                continue
+            text_parts.append(box.text)
+        if text_parts:
+            output.append((statistics.mean(box.center_y for box in row), ' '.join(text_parts)))
+
+    output.sort(key=lambda item: item[0])
+    return [line for _, line in output]
 
 
 def _normalized(line: str) -> str:
     return re.sub(r'[\s，。！？；：、,.!?;:（）()\[\]【】]', '', line).lower()
+
+
+def _is_non_report_row(row: list[TextBox]) -> bool:
+    text = ' '.join(box.text for box in sorted(row, key=lambda item: item.left)).strip()
+    ui_markers = ('播放倍速', '简略战报', '收起战报', '展开战报')
+    if any(marker in text for marker in ui_markers):
+        return True
+    # Unlabeled number clusters are usually HUD fragments, not battle-log text.
+    return bool(re.fullmatch(r'[0-9\s,，.。:：/\\+%()（）-]+', text))
 
 
 def _same_line(left: str, right: str) -> bool:
