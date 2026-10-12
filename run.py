@@ -1,13 +1,14 @@
+"""Run the project's pytest test cases."""
+
 import sys
 
+import pytest
+
+
+def main() -> int:
+    """Run all test cases under testcases/, forwarding extra pytest options."""
+    return pytest.main(['-v', 'testcases/', *sys.argv[1:]])
+
+
 if __name__ == '__main__':
-    if '--tests' in sys.argv:
-        import pytest
-
-        sys.argv.remove('--tests')
-        raise SystemExit(pytest.main(['-v', 'testcases/', *sys.argv[1:]]))
-
-    # 默认读取当前 MuMu 前台打开的《世界启元》战报。
-    from run_battle_report import main
-
-    main()
+    raise SystemExit(main())

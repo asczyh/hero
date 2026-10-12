@@ -8,7 +8,7 @@ class TestSearch:
 
         # 1. 处理隐私协议
         main_page.handle_privacy_policy()
-        main_page.click_skip_ad()
+        #main_page.click_skip_ad()
         # 2. 点击搜索框
         main_page.click_search_box()
 

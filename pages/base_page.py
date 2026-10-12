@@ -1,9 +1,10 @@
+from idlelib.debugobj import dispatch
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
-
+from airtest.core.api import *
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
@@ -20,6 +21,10 @@ class BasePage:
     def click(self, by, value):
         """点击元素"""
         self.find(by, value).click()
+    @dispatch(self,Template)
+    def click(self,png):
+        """点击图片"""
+        touch
 
     def send_keys(self, by, value, text):
         """输入文本"""

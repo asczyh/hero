@@ -4,8 +4,10 @@ APPIUM_SERVER_URL = 'http://localhost:4723'
 PLATFORM_NAME = 'Android'
 PLATFORM_VERSION = '12'
 DEVICE_NAME = 'zyh'
-APP_PACKAGE = 'tv.danmaku.bili'
-APP_ACTIVITY = '.MainActivityV2'
+APP_PACKAGE = 'com.tencent.tmgp.eden'
+APP_ACTIVITY = 'com.tencent.shell.MainShellActivity'
+#APP_PACKAGE = 'tv.danmaku.bili'
+#APP_ACTIVITY = '.MainActivityV2'
 AUTOMATION_NAME = 'UiAutomator2'
 
 # 驱动配置
