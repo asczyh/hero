@@ -1,10 +1,11 @@
-from idlelib.debugobj import dispatch
+from pathlib import Path
+
+from airtest.core.api import Template, touch
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
-from airtest.core.api import *
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
@@ -21,10 +22,22 @@ class BasePage:
     def click(self, by, value):
         """点击元素"""
         self.find(by, value).click()
-    @dispatch(self,Template)
-    def click(self,png):
-        """点击图片"""
-        touch
+
+    def click_img(self, image_path: str | Path):
+        """点击 assets/img 中的图片；也接受项目根目录相对路径。"""
+        image_path = Path(image_path)
+        if not image_path.is_absolute():
+            project_root = Path(__file__).resolve().parents[1]
+            project_relative_path = project_root / image_path
+            image_dir_path = project_root / "assets" / "img" / image_path
+            image_path = (
+                project_relative_path
+                if project_relative_path.is_file()
+                else image_dir_path
+            )
+        if not image_path.is_file():
+            raise FileNotFoundError(f"图片模板不存在：{image_path}")
+        return touch(Template(str(image_path)))
 
     def send_keys(self, by, value, text):
         """输入文本"""

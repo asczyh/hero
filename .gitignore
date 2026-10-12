@@ -1,4 +1,6 @@
 .idea/
+.venv/
+.venv313-backup/
 __pycache__/
 *.pyc
 output/
