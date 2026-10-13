@@ -4,32 +4,33 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from common.device import get_existing_mumu_driver
+from common.device import connect_mumu
 from common.ocr_reader import OcrReader, append_unseen_lines
 from config import settings
 from pages.battle_report_page import BattleReportPage
 
 
 def main() -> Path:
-    driver = get_existing_mumu_driver()
+    device = connect_mumu()
     try:
-        current_package = driver.current_package
-        if current_package and current_package != settings.GAME_PACKAGE:
-            raise RuntimeError(
-                f'当前前台应用是 {current_package}，请先在 MuMu 中打开《世界启元》的战报页。'
-            )
-
-        page = BattleReportPage(driver)
+        page = BattleReportPage(device)
         reader = OcrReader()
         initial_screenshot = page.screenshot()
-        start_check_lines = reader.read_lines(initial_screenshot, settings.REPORT_VIEWPORT)
+        # Include the round title with enough top padding for OCR's clipped-line
+        # filter; REPORT_VIEWPORT starts too close to the title on this screen.
+        start_check_viewport = {**settings.REPORT_VIEWPORT, 'top': 0.12}
+        start_check_lines = reader.read_lines(initial_screenshot, start_check_viewport)
         if not any(re.search(r'第\s*1\s*回合', line) for line in start_check_lines):
             raise RuntimeError('请先选择左侧“1”，并将战报停在第1回合开头，再运行脚本。')
-        # The round title is above REPORT_OCR_VIEWPORT. Use the larger viewport
-        # only for the start check, then keep extraction limited to the log panel.
+        opening_lines = [
+            line for line in start_check_lines
+            if re.search(r'第\s*1\s*回合', line) or line.strip() == '回合开始'
+        ]
+        # The round title and "回合开始" are above REPORT_OCR_VIEWPORT. Preserve
+        # those opening lines once, then keep scrolling OCR limited to the log panel.
         initial_lines = reader.read_lines(initial_screenshot, settings.REPORT_OCR_VIEWPORT)
 
-        saved_lines: list[str] = []
+        saved_lines: list[str] = opening_lines
         no_new_text_count = 0
 
         for swipe_count in range(settings.REPORT_MAX_SWIPES + 1):
@@ -64,7 +65,7 @@ def main() -> Path:
         print(f'战报已保存：{output_file}')
         return output_file
     finally:
-        driver.quit()
+        device.disconnect()
 
 
 if __name__ == '__main__':

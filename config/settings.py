@@ -1,24 +1,11 @@
-APPIUM_SERVER_URL = 'http://localhost:4723'
-
-# 设备与应用配置
-PLATFORM_NAME = 'Android'
-PLATFORM_VERSION = '12'
-DEVICE_NAME = 'zyh'
-APP_PACKAGE = 'com.tencent.tmgp.eden'
-APP_ACTIVITY = 'com.tencent.shell.MainShellActivity'
-#APP_PACKAGE = 'tv.danmaku.bili'
-#APP_ACTIVITY = '.MainActivityV2'
-AUTOMATION_NAME = 'UiAutomator2'
-
-# 驱动配置
-NO_RESET = True
-NEW_COMMAND_TIMEOUT = 6000
-IMPLICITLY_WAIT = 6
-
-# MuMu emulator currently attached through ADB. This is separate from the
-# Bilibili app settings above so the existing search example remains usable.
+# MuMu emulator connection through Airtest and ADB.
 MUMU_DEVICE_UDID = 'emulator-5554'
+AIRTEST_DEVICE_URI = f'Android://127.0.0.1:5037/{MUMU_DEVICE_UDID}?cap_method=JAVACAP'
+
 GAME_PACKAGE = 'com.tencent.tmgp.eden'
+GAME_ACTIVITY = 'com.tencent.shell.MainShellActivity'
+BILIBILI_PACKAGE = 'tv.danmaku.bili'
+BILIBILI_ACTIVITY = '.MainActivityV2'
 
 # Battle report viewport as fractions of the active screen. The fixed header
 # and bottom navigation are intentionally excluded from OCR and swipe gestures.
@@ -36,7 +23,7 @@ REPORT_OCR_VIEWPORT = {
     'right': 0.98,
     'bottom': 0.88,
 }
-REPORT_SCROLL_PERCENT = 0.65
+REPORT_SCROLL_PERCENT = 0.5
 REPORT_NO_NEW_TEXT_LIMIT = 2
 REPORT_MAX_SWIPES = 300
 REPORT_OUTPUT_DIR = 'output'

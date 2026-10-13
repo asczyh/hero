@@ -1,54 +1,81 @@
+"""Reusable Airtest helpers for image- and text-based screen interaction."""
+
+from __future__ import annotations
+
+import time
 from pathlib import Path
 
-from airtest.core.api import Template, touch
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common import TimeoutException
-from selenium.webdriver.support.wait import WebDriverWait
-from appium.webdriver.common.appiumby import AppiumBy
-from selenium.webdriver.common.by import By
+import numpy as np
+from airtest.core.api import Template
+from airtest.core.helper import G
+from PIL import Image
+from rapidocr import RapidOCR
+
+
+_IMAGE_TEMPLATE_DIR = str(Path(__file__).resolve().parents[1] / 'assets' / 'img')
+if _IMAGE_TEMPLATE_DIR not in G.BASEDIR:
+    G.BASEDIR.insert(0, _IMAGE_TEMPLATE_DIR)
+
+
 class BasePage:
-    def __init__(self, driver):
-        self.driver = driver
-        self.wait = WebDriverWait(driver, 20)
+    def __init__(self, device):
+        self.device = device
+        self._ocr = None
 
-    def find(self, by, value):
-        """查找单个元素"""
-        return self.driver.find_element(by, value)
+    def _snapshot_upright(self) -> np.ndarray:
+        """Return a screenshot aligned with Airtest's touch coordinates."""
+        image = Image.fromarray(self.device.snapshot())
+        width, height = self.device.get_current_resolution()
+        if image.size == (height, width) and width > height:
+            image = image.transpose(Image.Transpose.ROTATE_270)
+        return np.asarray(image)
 
-    def finds(self, by, value):
-        """查找多个元素"""
-        return self.driver.find_elements(by, value)
+    def click_img(self, image_path: str | Path, timeout: float = 20):
+        """Find and click an image template by its name or path."""
+        template = Template(str(image_path))
+        deadline = time.monotonic() + timeout
+        while True:
+            position = template.match_in(self._snapshot_upright())
+            if position is not None:
+                return self.device.touch(position)
+            if time.monotonic() >= deadline:
+                raise LookupError(f'屏幕上未找到图片模板：{image_path}')
+            time.sleep(0.25)
 
-    def click(self, by, value):
-        """点击元素"""
-        self.find(by, value).click()
+    def _find_text_position(self, target: str, timeout: float) -> tuple[int, int] | None:
+        deadline = time.monotonic() + timeout
+        while True:
+            if self._ocr is None:
+                self._ocr = RapidOCR()
+            result = self._ocr(self._snapshot_upright())
+            if result and result.boxes is not None and result.txts:
+                matches = [
+                    box
+                    for box, text in zip(result.boxes, result.txts)
+                    if target.casefold() in str(text).casefold()
+                ]
+                if matches:
+                    box = matches[0]
+                    center_x = round(sum(float(point[0]) for point in box) / len(box))
+                    center_y = round(sum(float(point[1]) for point in box) / len(box))
+                    return center_x, center_y
 
-    def click_img(self, image_path: str | Path):
-        """点击 assets/img 中的图片；也接受项目根目录相对路径。"""
-        image_path = Path(image_path)
-        if not image_path.is_absolute():
-            project_root = Path(__file__).resolve().parents[1]
-            project_relative_path = project_root / image_path
-            image_dir_path = project_root / "assets" / "img" / image_path
-            image_path = (
-                project_relative_path
-                if project_relative_path.is_file()
-                else image_dir_path
-            )
-        if not image_path.is_file():
-            raise FileNotFoundError(f"图片模板不存在：{image_path}")
-        return touch(Template(str(image_path)))
+            if time.monotonic() >= deadline:
+                return None
+            time.sleep(0.25)
 
-    def send_keys(self, by, value, text):
-        """输入文本"""
-        self.find(by, value).send_keys(text)
+    def click_text(self, text: str, timeout: float = 5) -> bool:
+        """OCR visible text and tap its center with the connected Airtest device."""
+        position = self._find_text_position(text, timeout)
+        if position is None:
+            raise LookupError(f'屏幕上未找到文字：{text}')
+        self.device.touch(position)
+        return True
 
-    def click_by_text(self, text, timeout=5):
-        # UiAutomator2 文本定位
-        element = WebDriverWait(self.driver, timeout).until(
-            EC.element_to_be_clickable((AppiumBy.ANDROID_UIAUTOMATOR,
-                                        f'new UiSelector().textContains("{text}")'))
-        )
-        element.click()
-        print(f">>> 通过原生定位点击: {text}")
+    def click_text_if_present(self, text: str, timeout: float = 1) -> bool:
+        """Tap visible text if it appears before timeout; otherwise do nothing."""
+        position = self._find_text_position(text, timeout)
+        if position is None:
+            return False
+        self.device.touch(position)
         return True

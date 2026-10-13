@@ -1,27 +1,21 @@
-from appium.webdriver.common.appiumby import AppiumBy
-from appium.webdriver.extensions.android.nativekey import AndroidKey
 from pages.base_page import BasePage
 
-class MainPage(BasePage):
-    # 元素定位器（Locators）
-    AGREE_BUTTON_ID = "first_click_ok"
-    EXPAND_SEARCH_ID = "expand_search"
-    SEARCH_INPUT_ID = "search_src_text"
 
+class MainPage(BasePage):
     def handle_privacy_policy(self):
-        """处理用户协议、隐私政策同意（如果有的话）"""
-        agree_buttons = self.finds(AppiumBy.ID, self.AGREE_BUTTON_ID)
-        if agree_buttons:
-            agree_buttons[0].click()
+        """Tap the consent button when a privacy prompt is visible."""
+        if not self.click_text_if_present('同意并继续', timeout=1):
+            self.click_text_if_present('同意', timeout=1)
+
     def click_skip_ad(self):
-        """跳过广告 bug"""
-        self.click_by_text("跳过")
+        """Skip an advertisement when its button is visible."""
+        self.click_text_if_present('跳过', timeout=1)
+
     def click_search_box(self):
-        """点击搜索框"""
-        self.click(AppiumBy.ID, self.EXPAND_SEARCH_ID)
+        """Tap the visible search control using OCR."""
+        self.click_text('搜索')
 
     def input_search_text(self, text):
-        """输入搜索内容并回车"""
-        self.send_keys(AppiumBy.ID, self.SEARCH_INPUT_ID, text)
-        # 回车确认搜索
-        self.driver.press_keycode(AndroidKey.ENTER)
+        """Type a query into the focused search box and submit it."""
+        self.device.text(text, enter=False)
+        self.device.keyevent('ENTER')

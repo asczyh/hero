@@ -1,41 +1,10 @@
-from appium import webdriver
-from appium.options.android import UiAutomator2Options
+"""Airtest connection helpers for the MuMu Android emulator."""
+
+from airtest.core.api import connect_device
+
 from config import settings
 
 
-def get_driver():
-    """初始化并返回 Appium Driver"""
-    options = UiAutomator2Options()
-    options.platform_name = settings.PLATFORM_NAME
-    options.platform_version = settings.PLATFORM_VERSION
-    options.device_name = settings.DEVICE_NAME
-    options.app_package = settings.APP_PACKAGE
-    options.app_activity = settings.APP_ACTIVITY
-    options.no_reset = settings.NO_RESET
-    options.new_command_timeout = settings.NEW_COMMAND_TIMEOUT
-    options.automation_name = settings.AUTOMATION_NAME
-
-    driver = webdriver.Remote(settings.APPIUM_SERVER_URL, options=options)
-
-    # 打印日志信息
-    print("appPackage:", driver.capabilities.get('appPackage'))
-    print("appActivity:", driver.capabilities.get('appActivity'))
-
-    driver.implicitly_wait(settings.IMPLICITLY_WAIT)
-    return driver
-
-
-def get_existing_mumu_driver():
-    """Attach Appium to the already-running MuMu screen without relaunching it."""
-    options = UiAutomator2Options()
-    options.platform_name = settings.PLATFORM_NAME
-    options.platform_version = settings.PLATFORM_VERSION
-    options.device_name = settings.DEVICE_NAME
-    options.automation_name = settings.AUTOMATION_NAME
-    options.no_reset = True
-    options.set_capability('appium:udid', settings.MUMU_DEVICE_UDID)
-    options.set_capability('appium:autoLaunch', False)
-
-    driver = webdriver.Remote(settings.APPIUM_SERVER_URL, options=options)
-    driver.implicitly_wait(0)
-    return driver
+def connect_mumu():
+    """Connect Airtest to the configured MuMu ADB device."""
+    return connect_device(settings.AIRTEST_DEVICE_URI)

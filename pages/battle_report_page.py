@@ -1,16 +1,27 @@
 """Screen actions for the currently open World of the World battle report."""
 
+from io import BytesIO
 import time
 
 from config import settings
+from PIL import Image
 
 
 class BattleReportPage:
-    def __init__(self, driver):
-        self.driver = driver
+    def __init__(self, device):
+        self.device = device
 
     def screenshot(self) -> bytes:
-        return self.driver.get_screenshot_as_png()
+        screenshot = Image.fromarray(self.device.snapshot())
+        # MuMu reports a 90-degree physical rotation: Airtest's raw frame is
+        # 900x1600 even though its touch coordinate space is 1600x900. Normalize
+        # captures to the touch resolution before applying report/OCR viewports.
+        width, height = self.device.get_current_resolution()
+        if screenshot.size == (height, width) and width > height:
+            screenshot = screenshot.transpose(Image.Transpose.ROTATE_270)
+        buffer = BytesIO()
+        screenshot.save(buffer, format='PNG')
+        return buffer.getvalue()
 
     def swipe_report_up(self) -> None:
         self._drag_report('up')
@@ -20,25 +31,20 @@ class BattleReportPage:
         self._drag_report('down')
 
     def _drag_report(self, direction: str) -> None:
-        size = self.driver.get_window_size()
+        width, height = self.device.get_current_resolution()
         viewport = settings.REPORT_VIEWPORT
-        left = round(size['width'] * viewport['left'])
-        top = round(size['height'] * viewport['top'])
-        width = round(size['width'] * (viewport['right'] - viewport['left']))
-        height = round(size['height'] * (viewport['bottom'] - viewport['top']))
+        left = round(width * viewport['left'])
+        top = round(height * viewport['top'])
+        viewport_width = round(width * (viewport['right'] - viewport['left']))
+        viewport_height = round(height * (viewport['bottom'] - viewport['top']))
 
-        x = left + round(width * 0.42)
-        low_y = top + round(height * 0.88)
-        high_y = top + round(height * 0.38)
-        start_y, end_y = (low_y, high_y) if direction == 'up' else (high_y, low_y)
+        x = left + round(viewport_width * 0.42)
+        start_y = top + round(viewport_height * 0.88)
+        end_y = start_y - round(viewport_height * settings.REPORT_SCROLL_PERCENT)
+        if direction == 'down':
+            start_y, end_y = end_y, start_y
 
-        self.driver.execute_script('mobile: dragGesture', {
-            'startX': x,
-            'startY': start_y,
-            'endX': x,
-            'endY': end_y,
-            'speed': 500,
-        })
+        self.device.swipe((x, start_y), (x, end_y), duration=0.5)
         time.sleep(0.7)
 
     def is_bottom_hint_visible(self, lines: list[str]) -> bool:
