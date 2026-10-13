@@ -31,6 +31,7 @@ class BattleReportPage:
         self._drag_report('down')
 
     def _drag_report(self, direction: str) -> None:
+        #计算战报区域，计算滑动起点和终点
         width, height = self.device.get_current_resolution()
         viewport = settings.REPORT_VIEWPORT
         left = round(width * viewport['left'])

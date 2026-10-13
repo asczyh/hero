@@ -7,4 +7,5 @@ class HeroPage(BasePage):
 
     def click_gm(self):
         """点击 GM 按钮图片。"""
-        return self.click_img("GM.png")
+        self.click_img("GM.png")
+        self.wait_img("GM界面打开标志.png", timeout=10)

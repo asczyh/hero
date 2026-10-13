@@ -32,14 +32,19 @@ class BasePage:
 
     def click_img(self, image_path: str | Path, timeout: float = 20):
         """Find and click an image template by its name or path."""
+        position = self.wait_img(image_path, timeout)
+        return self.device.touch(position)
+
+    def wait_img(self, image_path: str | Path, timeout: float = 20) -> tuple[int, int]:
+        """Wait for an image template to appear and return its center position."""
         template = Template(str(image_path))
         deadline = time.monotonic() + timeout
         while True:
             position = template.match_in(self._snapshot_upright())
             if position is not None:
-                return self.device.touch(position)
+                return position
             if time.monotonic() >= deadline:
-                raise LookupError(f'屏幕上未找到图片模板：{image_path}')
+                raise LookupError(f'等待图片模板超时，屏幕上未找到：{image_path}')
             time.sleep(0.25)
 
     def _find_text_position(self, target: str, timeout: float) -> tuple[int, int] | None:
