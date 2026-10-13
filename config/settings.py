@@ -1,5 +1,5 @@
 # MuMu emulator connection through Airtest and ADB.
-MUMU_DEVICE_UDID = 'emulator-5554'
+MUMU_DEVICE_UDID = '127.0.0.1:16384'
 AIRTEST_DEVICE_URI = f'Android://127.0.0.1:5037/{MUMU_DEVICE_UDID}?cap_method=JAVACAP'
 
 GAME_PACKAGE = 'com.tencent.tmgp.eden'

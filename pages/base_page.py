@@ -29,8 +29,7 @@ class BasePage:
         if image.size == (height, width) and width > height:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
-
-    def click_img(self, image_path: str | Path, timeout: float = 20):
+    def touch_img(self, image_path: str | Path, timeout: float = 20):
         """Find and click an image template by its name or path."""
         position = self.wait_img(image_path, timeout)
         return self.device.touch(position)
@@ -77,7 +76,7 @@ class BasePage:
         self.device.touch(position)
         return True
 
-    def click_text_if_present(self, text: str, timeout: float = 1) -> bool:
+    def touch_text_if_present(self, text: str, timeout: float = 1) -> bool:
         """Tap visible text if it appears before timeout; otherwise do nothing."""
         position = self._find_text_position(text, timeout)
         if position is None:

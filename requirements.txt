@@ -1,4 +1,3 @@
-Appium-Python-Client
 pytest
 airtest
 rapidocr
