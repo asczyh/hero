@@ -25,7 +25,6 @@ def main() -> Path:
         start_check_lines = reader.read_lines(initial_screenshot, settings.REPORT_VIEWPORT)
         if not any(re.search(r'第\s*1\s*回合', line) for line in start_check_lines):
             raise RuntimeError('请先选择左侧“1”，并将战报停在第1回合开头，再运行脚本。')
-
         # The round title is above REPORT_OCR_VIEWPORT. Use the larger viewport
         # only for the start check, then keep extraction limited to the log panel.
         initial_lines = reader.read_lines(initial_screenshot, settings.REPORT_OCR_VIEWPORT)
