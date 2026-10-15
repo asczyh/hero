@@ -29,12 +29,52 @@ class BasePage:
         if image.size == (height, width) and width > height:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
-    def touch_img(self, image_path: str | Path, timeout: float = 20):
+    def touch_img(self, image_path: str | Path, timeout: float = 5):
         """Find and click an image template by its name or path."""
+        if Path(image_path).suffix.lower() != ".png":
+            raise ValueError(
+                f"touch_img 的图片参数必须以 .png 结尾，收到：{image_path!s}。"
+                "示例：page.touch_img('市中心_新建设施图标.png')"
+            )
         position = self.wait_img(image_path, timeout)
         return self.device.touch(position)
 
-    def wait_img(self, image_path: str | Path, timeout: float = 20) -> tuple[int, int]:
+    def touch_extreme_img(
+        self,
+        image_path: str | Path,
+        direction: str = "top",
+        timeout: float = 5,
+    ) -> tuple[int, int]:
+        """Wait for matching images, then click the one nearest the requested screen edge."""
+        direction_axes = {
+            "top": (1, False),
+            "bottom": (1, True),
+            "left": (0, False),
+            "right": (0, True),
+        }
+        if direction not in direction_axes:
+            raise ValueError(
+                f"direction must be one of {', '.join(direction_axes)}, got: {direction!r}"
+            )
+
+        template = Template(str(image_path))
+        deadline = time.monotonic() + timeout
+        while True:
+            matches = template.match_all_in(self._snapshot_upright())
+            if matches:
+                axis, choose_largest = direction_axes[direction]
+                match = (max if choose_largest else min)(
+                    matches,
+                    key=lambda item: item["result"][axis],
+                )
+                return self.device.touch(match["result"])
+
+            if time.monotonic() >= deadline:
+                raise LookupError(f'等待图片模板超时，屏幕上未找到：{image_path}')
+            time.sleep(0.25)
+
+
+    def wait_img(self, image_path: str | Path, timeout: float = 5) -> tuple[int, int]:
         """Wait for an image template to appear and return its center position."""
         template = Template(str(image_path))
         deadline = time.monotonic() + timeout

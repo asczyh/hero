@@ -21,6 +21,19 @@ class HeroPage(BasePage):
     def gm_execute(self,count:int=1):
         """执行第一条GM time次"""
         for i in range(count):
-            self.device.touch(rc(340,100))
+            self.device.touch(rc(420,125))
+
+    def touch_blank(self):
+        """Dismiss every visible blank-area prompt; zero occurrences is normal."""
+        count = 0
+        while True:
+            try:
+                position = self.wait_img("点击空白处关闭.png", timeout=2)
+            except LookupError:
+                break
+            self.device.touch(position)
+            count += 1
+            sleep(0.3)
+        return count
 
 
