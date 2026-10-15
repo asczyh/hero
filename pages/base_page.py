@@ -29,6 +29,7 @@ class BasePage:
         if image.size == (height, width) and width > height:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
+
     def touch_img(self, image_path: str | Path, timeout: float = 5):
         """Find and click an image template by its name or path."""
         if Path(image_path).suffix.lower() != ".png":
@@ -38,6 +39,40 @@ class BasePage:
             )
         position = self.wait_img(image_path, timeout)
         return self.device.touch(position)
+
+    def touch_img_in_row(
+        self,
+        image_path: str | Path,
+        row_image_path: str | Path,
+        timeout: float = 5,
+        y_tolerance: int = 25,
+    ) -> tuple[int, int]:
+        """Click an image match on the same row as another image template."""
+        for path in (image_path, row_image_path):
+            if Path(path).suffix.lower() != ".png":
+                raise ValueError(f"图片参数必须以 .png 结尾，收到：{path!s}")
+
+        button_template = Template(str(image_path))
+        row_template = Template(str(row_image_path), threshold=0.95)
+        deadline = time.monotonic() + timeout
+        while True:
+            screenshot = self._snapshot_upright()
+            row_position = row_template.match_in(screenshot)
+            if row_position is not None:
+                matches = button_template.match_all_in(screenshot) or []
+                if matches:
+                    match = min(
+                        matches,
+                        key=lambda item: abs(item["result"][1] - row_position[1]),
+                    )
+                    if abs(match["result"][1] - row_position[1]) <= y_tolerance:
+                        return self.device.touch(match["result"])
+
+            if time.monotonic() >= deadline:
+                raise LookupError(
+                    f'未找到图片“{row_image_path}”所在行的按钮：{image_path}'
+                )
+            time.sleep(0.25)
 
     def touch_extreme_img(
         self,
@@ -86,24 +121,26 @@ class BasePage:
                 raise LookupError(f'等待图片模板超时，屏幕上未找到：{image_path}')
             time.sleep(0.25)
 
-    def _find_text_position(self, target: str, timeout: float) -> tuple[int, int] | None:
-        deadline = time.monotonic() + timeout
-        while True:
-            if self._ocr is None:
-                self._ocr = RapidOCR()
-            result = self._ocr(self._snapshot_upright())
-            if result and result.boxes is not None and result.txts:
-                matches = [
-                    box
-                    for box, text in zip(result.boxes, result.txts)
-                    if target.casefold() in str(text).casefold()
-                ]
-                if matches:
-                    box = matches[0]
+    def _find_text_in_image(
+        self, screenshot: np.ndarray, target: str
+    ) -> tuple[int, int] | None:
+        if self._ocr is None:
+            self._ocr = RapidOCR()
+        result = self._ocr(screenshot)
+        if result and result.boxes is not None and result.txts:
+            for box, text in zip(result.boxes, result.txts):
+                if target.casefold() in str(text).casefold():
                     center_x = round(sum(float(point[0]) for point in box) / len(box))
                     center_y = round(sum(float(point[1]) for point in box) / len(box))
                     return center_x, center_y
+        return None
 
+    def _find_text_position(self, target: str, timeout: float) -> tuple[int, int] | None:
+        deadline = time.monotonic() + timeout
+        while True:
+            position = self._find_text_in_image(self._snapshot_upright(), target)
+            if position is not None:
+                return position
             if time.monotonic() >= deadline:
                 return None
             time.sleep(0.25)

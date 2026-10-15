@@ -1,10 +1,5 @@
-from datetime import datetime
-from pathlib import Path
-from PIL import Image, ImageDraw
-from utils import *
-from airtest.core.api import swipe, sleep
-from config import settings
 from pages.hero_page import HeroPage
+from utils import rc
 
 class TestPrepare:
     def test_gm(self, device):
@@ -41,28 +36,24 @@ class TestPrepare:
         page.touch_img("地图_主城.png")
         page.touch_img("市中心按钮.png")
         page.touch_extreme_img("市中心_军营图标.png", "top")  # 点击最上方的军营图标
-        page.wait_img("前往.png")
-        page.device.touch(rc(1500,680))  #点击第一个前往按钮，跳转到马厩
+        page.touch_img_in_row("前往.png", "市中心_马厩文字.png")
         page.touch_img("建造文字按钮.png")
         page.touch_img("加速建造按钮.png")
 
         page.touch_extreme_img("市中心_军营图标.png","top")   #点击最上方的军营图标，准备建造下一项建造
-        page.wait_img("前往.png")
-        page.device.touch(rc(1500,750))  #点击第二个前往按钮
+        page.touch_img_in_row("前往.png", "市中心_兵工厂文字.png")
         page.touch_img("建造文字按钮.png")
         page.touch_img("加速建造按钮.png")
 
         page.touch_extreme_img("市中心_军营图标.png","top")   #点击最上方的军营图标，准备建造下一项建造
-        page.device.swipe(rc(1200,680), rc(1200,780))
-        page.wait_img("前往.png")
-        page.device.touch(rc(1500,722))  #点击第三个前往按钮
+        page.device.swipe(rc(1200,780), rc(1200,680))  # 向上滑动，显示后续设施
+        page.touch_img_in_row("前往.png", "市中心_军事学院文字.png")
         page.touch_img("建造文字按钮.png")
         page.touch_img("加速建造按钮.png")
 
         page.touch_extreme_img("市中心_军营图标.png","top")   #点击最上方的军营图标，准备建造下一项建造
         page.device.swipe(rc(1200,780), rc(1200,680))
-        page.wait_img("前往.png")
-        page.device.touch(rc(1500,780))  #点击第四个前往按钮
+        page.touch_img_in_row("前往.png", "市中心_兵营文字.png")
         page.touch_img("建造文字按钮.png")
         page.touch_img("加速建造按钮.png")
         page.device.touch(rc(413, 194))
