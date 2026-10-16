@@ -22,7 +22,7 @@ class TestPrepare:
     def test_barracks(self, device):
         page = HeroPage(device)
         # 建造军营
-        page.touch_home()
+        page.touch_img("地图_主城标志.png")
         page.touch_img("市中心按钮.png")
         page.touch_img("市中心_新建设施图标.png")
         page.touch_img("建造_军营.png")
@@ -32,8 +32,8 @@ class TestPrepare:
 
     def test_facilities(self, device):
         page = HeroPage(device)
-        # 建造军营设施
-        page.touch_home()
+        #建造军营设施
+        page.touch_img("地图_主城标志.png")
         page.touch_img("市中心按钮.png")
         page.touch_extreme_img("市中心_军营图标.png", "top")  # 点击最上方的军营图标
         page.touch_img_in_row("前往.png", "市中心_马厩文字.png")
@@ -58,8 +58,6 @@ class TestPrepare:
         page.touch_img("加速建造按钮.png")
         page.device.touch(rc(413, 194))
 
-    def test_t(self,device):
-        page = HeroPage(device)
-        page.touch_home()
+
 
 
