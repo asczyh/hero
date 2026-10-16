@@ -30,7 +30,7 @@ class BasePage:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
 
-    def touch_img(self, image_path: str | Path, timeout: float = 5):
+    def touch_img(self, image_path: str | Path, timeout: float = 10):
         """Find and click an image template by its name or path."""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
@@ -44,7 +44,7 @@ class BasePage:
         self,
         image_path: str | Path,
         row_image_path: str | Path,
-        timeout: float = 5,
+        timeout: float = 10,
         y_tolerance: int = 25,
     ) -> tuple[int, int]:
         """Click an image match on the same row as another image template."""
