@@ -1,7 +1,6 @@
 """Reusable Airtest helpers for image- and text-based screen interaction."""
 
 from __future__ import annotations
-
 import time
 from pathlib import Path
 
@@ -40,11 +39,82 @@ class BasePage:
         position = self.wait_img(image_path, timeout)
         return self.device.touch(position)
 
+    def find_all(self, image_path: str | Path) -> list[tuple[int, int]]:
+        """Return the center coordinates of every matching image on screen."""
+        if Path(image_path).suffix.lower() != ".png":
+            raise ValueError(
+                f"find_all 的图片参数必须以 .png 结尾，收到：{image_path!s}"
+            )
+        template = Template(str(image_path))
+        matches = template.match_all_in(self._snapshot_upright()) or []
+        return [match["result"] for match in matches]
+
+    def touch_img_if_present(
+        self, image_path: str | Path, timeout: float = 1
+    ) -> bool:
+        """Click an image if it appears before timeout; otherwise continue."""
+        if Path(image_path).suffix.lower() != ".png":
+            raise ValueError(
+                f"touch_img_if_present 的图片参数必须以 .png 结尾，收到：{image_path!s}"
+            )
+        try:
+            position = self.wait_img(image_path, timeout)
+        except LookupError:
+            return False
+        self.device.touch(position)
+        return True
+
+    def touch_img_in_region(
+        self,
+        image_path: str | Path,
+        top_left: tuple[float, float],
+        bottom_right: tuple[float, float],
+        timeout: float = 5,
+    ):
+        """Find and click an image inside a rectangle defined by relative points."""
+        if Path(image_path).suffix.lower() != ".png":
+            raise ValueError(
+                f"touch_img_in_region 的图片参数必须以 .png 结尾，收到：{image_path!s}"
+            )
+        if len(top_left) != 2 or len(bottom_right) != 2:
+            raise ValueError("top_left 和 bottom_right 都必须是 (x, y) 坐标")
+
+        left_ratio, top_ratio = top_left
+        right_ratio, bottom_ratio = bottom_right
+        if not all(0 <= value <= 1 for value in (*top_left, *bottom_right)):
+            raise ValueError("相对坐标必须在 0 到 1 之间")
+        if right_ratio <= left_ratio or bottom_ratio <= top_ratio:
+            raise ValueError(f"无效的匹配区域：{top_left!r}, {bottom_right!r}")
+
+        template = Template(str(image_path))
+        deadline = time.monotonic() + min(timeout, 5)
+        while True:
+            screenshot = self._snapshot_upright()
+            height, width = screenshot.shape[:2]
+            left = round(left_ratio * width)
+            top = round(top_ratio * height)
+            right = round(right_ratio * width)
+            bottom = round(bottom_ratio * height)
+            if right <= left or bottom <= top:
+                raise ValueError("相对坐标换算后的匹配区域为空")
+
+            cropped = screenshot[top:bottom, left:right]
+            position = template.match_in(cropped)
+            if position is not None:
+                position = (position[0] + left, position[1] + top)
+                return self.device.touch(position)
+
+            if time.monotonic() >= deadline:
+                raise LookupError(
+                    f"在区域 {top_left!r} 到 {bottom_right!r} 内未找到图片模板：{image_path}"
+                )
+            time.sleep(0.25)
+
     def touch_img_in_row(
         self,
         image_path: str | Path,
         row_image_path: str | Path,
-        timeout: float = 10,
+        timeout: float = 5,
         y_tolerance: int = 25,
     ) -> tuple[int, int]:
         """Click an image match on the same row as another image template."""
@@ -54,7 +124,7 @@ class BasePage:
 
         button_template = Template(str(image_path))
         row_template = Template(str(row_image_path), threshold=0.95)
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + min(timeout, 5)
         while True:
             screenshot = self._snapshot_upright()
             row_position = row_template.match_in(screenshot)
@@ -160,3 +230,16 @@ class BasePage:
             return False
         self.device.touch(position)
         return True
+
+    def touch_blank(self):
+        """Dismiss every visible blank-area prompt; zero occurrences is normal."""
+        count = 0
+        while True:
+            try:
+                position = self.wait_img("点击空白处关闭.png", timeout=2)
+            except LookupError:
+                break
+            self.device.touch(position)
+            count += 1
+            time.sleep(0.3)
+        return count
