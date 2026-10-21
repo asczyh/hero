@@ -15,6 +15,26 @@ class HeroPage(BasePage):
             self.device.touch(position)
             sleep(0.1)
 
+    def button_star(self, timeout: float = 5):
+        #升星按钮被gm覆盖，因此需要向下便宜点击坐标
+        position = self.wait_img("英雄_升星.png", timeout)
+        while True:
+            self.device.touch((position[0], position[1] - 37))
+            if self.exist_img("英雄_升星按钮"):
+                break
+
+        sleep(0.5)
+
+    def button_info(self):
+        return  self.touch_img("英雄_信息.png")
+
+    def button_dismantle(self):
+        return  self.touch_img("英雄_分解.png")
+
+    def touch_hero_pos(self,pos=1):
+        x=pos*260-95
+        self.device.touch(rc(x,400))
+
 
 
 

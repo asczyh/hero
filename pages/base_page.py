@@ -20,6 +20,7 @@ class BasePage:
     def __init__(self, device):
         self.device = device
         self._ocr = None
+        self.last_match_confidence: float | None = None
 
     def _snapshot_upright(self) -> np.ndarray:
         """Return a screenshot aligned with Airtest's touch coordinates."""
@@ -29,15 +30,47 @@ class BasePage:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
 
-    def touch_img(self, image_path: str | Path, timeout: float = 10):
+    def touch_img(
+        self,
+        image_path: str | Path,
+        timeout: float = 10,
+        threshold: float = 0.7,
+    ):
         """Find and click an image template by its name or path."""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"touch_img 的图片参数必须以 .png 结尾，收到：{image_path!s}。"
                 "示例：page.touch_img('市中心_新建设施图标.png')"
             )
-        position = self.wait_img(image_path, timeout)
+        position = self.wait_img(image_path, timeout, threshold)
         return self.device.touch(position)
+
+    def exist_img(
+        self,
+        image_path: str | Path,
+        timeout: float = 1,
+        threshold: float = 0.7,
+    ) -> bool:
+        """Return whether an image appears before timeout and save its best score."""
+        if Path(image_path).suffix.lower() != ".png":
+            raise ValueError(
+                f"exist_img 的图片参数必须以 .png 结尾，收到：{image_path!s}"
+            )
+
+        template = Template(str(image_path), threshold=0)
+        deadline = time.monotonic() + timeout
+        self.last_match_confidence = 0.0
+        while True:
+            matches = template.match_all_in(self._snapshot_upright()) or []
+            self.last_match_confidence = max(
+                (match["confidence"] for match in matches),
+                default=0.0,
+            )
+            if self.last_match_confidence >= threshold:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.25)
 
     def find_all(self, image_path: str | Path) -> list[tuple[int, int]]:
         """Return the center coordinates of every matching image on screen."""
@@ -179,9 +212,11 @@ class BasePage:
             time.sleep(0.25)
 
 
-    def wait_img(self, image_path: str | Path, timeout: float = 5) -> tuple[int, int]:
+    def wait_img(
+        self, image_path: str | Path, timeout: float = 5, threshold: float = 0.7
+    ) -> tuple[int, int]:
         """Wait for an image template to appear and return its center position."""
-        template = Template(str(image_path))
+        template = Template(str(image_path), threshold=threshold)
         deadline = time.monotonic() + timeout
         while True:
             position = template.match_in(self._snapshot_upright())

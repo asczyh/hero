@@ -14,6 +14,7 @@ class GmPage(BasePage):
         self.touch_img("GM.png")
         self.wait_img("GM界面打开标志.png", timeout=10)
 
+
     def input(self, text: str = "恺撒", count: int = 0):
         """在 GM 输入框输入文本，并发送一次回车确认。 需要打开GM界面，不需要打开输入栏"""
         self.touch_img("GM输入框.png")
