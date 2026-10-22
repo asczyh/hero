@@ -20,7 +20,7 @@ class HeroPage(BasePage):
         position = self.wait_img("英雄_升星.png", timeout)
         while True:
             self.device.touch((position[0], position[1] - 37))
-            if self.exist_img("英雄_升星按钮"):
+            if self.exist_img("英雄_升星按钮.png"):
                 break
 
         sleep(0.5)

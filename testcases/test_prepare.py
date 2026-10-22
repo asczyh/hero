@@ -59,12 +59,13 @@ class TestPrepare:
         center_page.touch_img_in_row("前往.png", "市中心_兵营文字.png")
         center_page.build_facility()
 
-    def test_1(self, device):
-        hero_page = HeroPage(device)
-        map_page = MapPage(device)
-        center_page = CenterPage(device)
-        #建造军营设施
-        center_page.touch_img_in_region("市中心_军营图标.png",rc(270,150),rc(850,230))
+    # def test_1(self, device):
+    #     hero_page = HeroPage(device)
+    #     map_page = MapPage(device)
+    #     center_page = CenterPage(device)
+    #     #建造军营设施
+    #     center_page.touch_img_in_region("市中心_军营图标.png",rc(270,150),rc(850,230))
+    #
 
 
 

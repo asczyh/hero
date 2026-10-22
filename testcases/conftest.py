@@ -3,7 +3,7 @@ from common.device import connect_mumu
 
 @pytest.fixture(scope="session")
 def device():
-    """Connect to MuMu once for the test session and release it afterward."""
+    """测试会话开始时连接一次 MuMu，并在结束后释放设备。"""
     device = connect_mumu()
     try:
         yield device

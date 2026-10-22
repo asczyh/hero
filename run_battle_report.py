@@ -1,4 +1,4 @@
-"""Read the open MuMu battle report and save its text to output/."""
+"""读取当前打开的 MuMu 战报，并将识别文本保存到 output/。"""
 
 import re
 from datetime import datetime
@@ -16,8 +16,8 @@ def main() -> Path:
         page = BattleReportPage(device)
         reader = OcrReader()
         initial_screenshot = page.screenshot()
-        # Include the round title with enough top padding for OCR's clipped-line
-        # filter; REPORT_VIEWPORT starts too close to the title on this screen.
+        # 顶部多留一些空间以包含回合标题，避免被 OCR 的裁边过滤规则去掉；
+        # 当前画面的 REPORT_VIEWPORT 起点离标题太近。
         start_check_viewport = {**settings.REPORT_VIEWPORT, 'top': 0.12}
         start_check_lines = reader.read_lines(initial_screenshot, start_check_viewport)
         if not any(re.search(r'第\s*1\s*回合', line) for line in start_check_lines):
@@ -26,8 +26,8 @@ def main() -> Path:
             line for line in start_check_lines
             if re.search(r'第\s*1\s*回合', line) or line.strip() == '回合开始'
         ]
-        # The round title and "回合开始" are above REPORT_OCR_VIEWPORT. Preserve
-        # those opening lines once, then keep scrolling OCR limited to the log panel.
+        # 回合标题和“回合开始”位于 REPORT_OCR_VIEWPORT 上方。先保留这些开头文本，
+        # 后续滑动时仍只对战报面板进行 OCR。
         initial_lines = reader.read_lines(initial_screenshot, settings.REPORT_OCR_VIEWPORT)
 
         saved_lines: list[str] = opening_lines

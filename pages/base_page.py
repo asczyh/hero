@@ -1,4 +1,4 @@
-"""Reusable Airtest helpers for image- and text-based screen interaction."""
+"""用于图像识别和文本交互的 Airtest 通用辅助方法。"""
 
 from __future__ import annotations
 import time
@@ -23,7 +23,7 @@ class BasePage:
         self.last_match_confidence: float | None = None
 
     def _snapshot_upright(self) -> np.ndarray:
-        """Return a screenshot aligned with Airtest's touch coordinates."""
+        """返回与 Airtest 点击坐标对齐的截图。"""
         image = Image.fromarray(self.device.snapshot())
         width, height = self.device.get_current_resolution()
         if image.size == (height, width) and width > height:
@@ -36,7 +36,7 @@ class BasePage:
         timeout: float = 10,
         threshold: float = 0.7,
     ):
-        """Find and click an image template by its name or path."""
+        """查找并点击指定名称或路径的图片模板。"""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"touch_img 的图片参数必须以 .png 结尾，收到：{image_path!s}。"
@@ -51,7 +51,7 @@ class BasePage:
         timeout: float = 1,
         threshold: float = 0.7,
     ) -> bool:
-        """Return whether an image appears before timeout and save its best score."""
+        """等待图片出现并保存最高匹配度，不执行点击。"""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"exist_img 的图片参数必须以 .png 结尾，收到：{image_path!s}"
@@ -73,7 +73,7 @@ class BasePage:
             time.sleep(0.25)
 
     def find_all(self, image_path: str | Path) -> list[tuple[int, int]]:
-        """Return the center coordinates of every matching image on screen."""
+        """返回屏幕上所有匹配图片的中心坐标。"""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"find_all 的图片参数必须以 .png 结尾，收到：{image_path!s}"
@@ -85,7 +85,7 @@ class BasePage:
     def touch_img_if_present(
         self, image_path: str | Path, timeout: float = 1
     ) -> bool:
-        """Click an image if it appears before timeout; otherwise continue."""
+        """若图片在超时前出现则点击，否则继续执行。"""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"touch_img_if_present 的图片参数必须以 .png 结尾，收到：{image_path!s}"
@@ -104,7 +104,7 @@ class BasePage:
         bottom_right: tuple[float, float],
         timeout: float = 5,
     ):
-        """Find and click an image inside a rectangle defined by relative points."""
+        """在相对坐标定义的矩形区域内查找并点击图片。"""
         if Path(image_path).suffix.lower() != ".png":
             raise ValueError(
                 f"touch_img_in_region 的图片参数必须以 .png 结尾，收到：{image_path!s}"
@@ -150,7 +150,7 @@ class BasePage:
         timeout: float = 5,
         y_tolerance: int = 25,
     ) -> tuple[int, int]:
-        """Click an image match on the same row as another image template."""
+        """点击与另一张模板图片处于同一行的匹配项。"""
         for path in (image_path, row_image_path):
             if Path(path).suffix.lower() != ".png":
                 raise ValueError(f"图片参数必须以 .png 结尾，收到：{path!s}")
@@ -183,7 +183,7 @@ class BasePage:
         direction: str = "top",
         timeout: float = 5,
     ) -> tuple[int, int]:
-        """Wait for matching images, then click the one nearest the requested screen edge."""
+        """等待匹配图片出现，再点击最靠近指定屏幕边缘的一项。"""
         direction_axes = {
             "top": (1, False),
             "bottom": (1, True),
@@ -215,7 +215,7 @@ class BasePage:
     def wait_img(
         self, image_path: str | Path, timeout: float = 5, threshold: float = 0.7
     ) -> tuple[int, int]:
-        """Wait for an image template to appear and return its center position."""
+        """等待图片模板出现，并返回其中心坐标。"""
         template = Template(str(image_path), threshold=threshold)
         deadline = time.monotonic() + timeout
         while True:
@@ -251,7 +251,7 @@ class BasePage:
             time.sleep(0.25)
 
     def click_text(self, text: str, timeout: float = 5) -> bool:
-        """OCR visible text and tap its center with the connected Airtest device."""
+        """识别屏幕上的文字，并使用已连接的 Airtest 设备点击文字中心。"""
         position = self._find_text_position(text, timeout)
         if position is None:
             raise LookupError(f'屏幕上未找到文字：{text}')
@@ -259,7 +259,7 @@ class BasePage:
         return True
 
     def touch_text_if_present(self, text: str, timeout: float = 1) -> bool:
-        """Tap visible text if it appears before timeout; otherwise do nothing."""
+        """若文字在超时前出现则点击，否则不执行操作。"""
         position = self._find_text_position(text, timeout)
         if position is None:
             return False
@@ -267,7 +267,7 @@ class BasePage:
         return True
 
     def touch_blank(self):
-        """Dismiss every visible blank-area prompt; zero occurrences is normal."""
+        """关闭所有可见的“点击空白处”提示；提示出现零次也是正常情况。"""
         count = 0
         while True:
             try:

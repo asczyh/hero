@@ -1,4 +1,4 @@
-"""Screen actions for the currently open World of the World battle report."""
+"""当前已打开战报页面的界面操作。"""
 
 from io import BytesIO
 import time
@@ -13,9 +13,8 @@ class BattleReportPage:
 
     def screenshot(self) -> bytes:
         screenshot = Image.fromarray(self.device.snapshot())
-        # MuMu reports a 90-degree physical rotation: Airtest's raw frame is
-        # 900x1600 even though its touch coordinate space is 1600x900. Normalize
-        # captures to the touch resolution before applying report/OCR viewports.
+        # MuMu 截图相对触摸坐标旋转了 90 度：Airtest 原始画面为 900×1600，
+        # 但触摸坐标空间为 1600×900。应用战报/OCR 区域前，先将截图转到触摸分辨率。
         width, height = self.device.get_current_resolution()
         if screenshot.size == (height, width) and width > height:
             screenshot = screenshot.transpose(Image.Transpose.ROTATE_270)
@@ -27,7 +26,7 @@ class BattleReportPage:
         self._drag_report('up')
 
     def drag_report_down(self) -> None:
-        """Move toward the beginning of the report before extraction starts."""
+        """开始提取前，先滑到战报开头。"""
         self._drag_report('down')
 
     def _drag_report(self, direction: str) -> None:

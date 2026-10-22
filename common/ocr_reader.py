@@ -1,4 +1,4 @@
-"""OCR and overlap-aware text assembly for screenshots of battle reports."""
+"""识别战报截图中的文字，并通过重叠内容拼接文本。"""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ class OcrReader:
         self.engine = RapidOCR()
 
     def read_lines(self, screenshot_png: bytes, viewport: dict[str, float]) -> list[str]:
-        """OCR only the report body and return detected lines in reading order."""
+        """仅识别战报正文，并按阅读顺序返回检测到的文本行。"""
         image = Image.open(io.BytesIO(screenshot_png)).convert('RGB')
         width, height = image.size
         left = round(width * viewport['left'])
@@ -57,12 +57,11 @@ class OcrReader:
             clean = re.sub(r'\s+', ' ', str(text)).strip()
             if not clean or clean in {'简略战报', '收起战报', 'uv1-'}:
                 continue
-            # Each box is four (x, y) points, relative to the cropped image.
+            # 每个文本框由相对于裁剪图像的四个 (x, y) 点组成。
             xs = [float(point[0]) for point in box]
             ys = [float(point[1]) for point in box]
-            # The game clips partially visible log lines at the scroll-panel
-            # edges. Ignore those fragments; the overlapping next frame will
-            # capture the complete line.
+            # 游戏会裁掉滚动面板边缘处只显示一部分的文本行。
+            # 忽略这些片段，下一帧的重叠区域会包含完整文本行。
             if min(ys) < 20 or max(ys) > crop.height - 8:
                 continue
             boxes.append(TextBox(clean, min(xs), min(ys), max(xs), max(ys)))
@@ -78,7 +77,7 @@ _METRIC_PATTERNS = {
 
 
 def _layout_text_boxes(boxes: list[TextBox], image_width: int) -> list[str]:
-    """Cluster OCR boxes by baseline, then join action-row metrics by geometry."""
+    """按基线对 OCR 文本框分组，再根据位置关系合并行动行和数值字段。"""
     if not boxes:
         return []
 
@@ -106,9 +105,8 @@ def _layout_text_boxes(boxes: list[TextBox], image_width: int) -> list[str]:
 
     consumed: set[int] = set()
     output: list[tuple[float, str]] = []
-    # Metric labels can be detected with a slightly different vertical box
-    # than the action text. They are safe to match over a wider band because
-    # only labeled fields in the right column are considered.
+    # 数值标签的检测框垂直位置可能与行动文本略有偏差。
+    # 由于只匹配右侧列中带标签的字段，因此可以适当放宽匹配范围。
     metric_tolerance = max(28.0, typical_height * 1.30)
 
     for action_index, action_y, action_text in action_rows:
@@ -165,7 +163,7 @@ def _is_non_report_row(row: list[TextBox]) -> bool:
     ui_markers = ('播放倍速', '简略战报', '收起战报', '展开战报')
     if any(marker in text for marker in ui_markers):
         return True
-    # Unlabeled number clusters are usually HUD fragments, not battle-log text.
+    # 没有标签的数字通常是界面状态栏的残片，而不是战报内容。
     return bool(re.fullmatch(r'[0-9\s,，.。:：/\\+%()（）-]+', text))
 
 
@@ -175,12 +173,12 @@ def _same_line(left: str, right: str) -> bool:
         return False
     if a == b:
         return True
-    # OCR sometimes changes a single character at a frame boundary.
+    # OCR 有时会在相邻画面的边界处把一个字符识别成不同内容。
     return min(len(a), len(b)) >= 5 and SequenceMatcher(None, a, b).ratio() >= 0.82
 
 
 def append_unseen_lines(saved: list[str], current: Iterable[str]) -> int:
-    """Append a frame after removing its longest suffix/prefix overlap."""
+    """去除新画面与已有文本之间最长的后缀/前缀重叠后，再追加该画面的文本。"""
     incoming = list(current)
     overlap = 0
     max_overlap = min(len(saved), len(incoming), 30)
