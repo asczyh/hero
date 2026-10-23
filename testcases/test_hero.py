@@ -20,9 +20,10 @@ class TestHero:
         hero_page.button_star()
         #选择素材
         hero_page.choose_hero("恺撒.png", 3)
-        gm_page.touch_img("英雄_升星按钮.png")
+        hero_page.touch_img("英雄_升星按钮.png")
         assert gm_page.exist_img("英雄_英雄升星成功.png")
-        gm_page.touch_blank()
+        hero_page.touch_blank()
+
 
 
     def test_1(self, device):

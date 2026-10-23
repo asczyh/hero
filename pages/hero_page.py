@@ -26,7 +26,8 @@ class HeroPage(BasePage):
         sleep(0.5)
 
     def button_info(self):
-        return  self.touch_img("英雄_信息.png")
+        self.touch_img("英雄_信息.png")
+        sleep(0.5)
 
     def button_dismantle(self):
         return  self.touch_img("英雄_分解.png")
