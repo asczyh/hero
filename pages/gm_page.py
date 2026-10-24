@@ -31,6 +31,12 @@ class GmPage(BasePage):
     def exit(self):
         self.touch_img("退出GM.png")
 
+    def get_hero(self,count: int = 1):
+        self.open()
+        self.input("清空英雄", 1)
+        self.input("恺撒", count)
+        self.exit()
+
 
 
 

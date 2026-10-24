@@ -1,6 +1,7 @@
 """用于图像识别和文本交互的 Airtest 通用辅助方法。"""
 
 from __future__ import annotations
+from datetime import datetime
 import time
 from pathlib import Path
 
@@ -30,11 +31,26 @@ class BasePage:
             image = image.transpose(Image.Transpose.ROTATE_270)
         return np.asarray(image)
 
+    def save_screenshot(self, filename: str | None = None) -> Path:
+        """截取当前模拟器画面并保存到项目的 output 目录。"""
+        output_dir = Path(__file__).resolve().parents[1] / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if filename is None:
+            filename = f"screenshot_{datetime.now():%Y%m%d_%H%M%S_%f}.png"
+        elif Path(filename).suffix.lower() != ".png":
+            raise ValueError("截图文件名必须以 .png 结尾")
+
+        screenshot_path = output_dir / filename
+        Image.fromarray(self._snapshot_upright()).save(screenshot_path)
+        return screenshot_path
+
     def touch_img(
         self,
         image_path: str | Path,
         timeout: float = 10,
         threshold: float = 0.7,
+        show_position: bool = False,
     ):
         """查找并点击指定名称或路径的图片模板。"""
         if Path(image_path).suffix.lower() != ".png":
@@ -43,6 +59,8 @@ class BasePage:
                 "示例：page.touch_img('市中心_新建设施图标.png')"
             )
         position = self.wait_img(image_path, timeout, threshold)
+        if show_position:
+            print(f"点击图片 {image_path}，坐标：{position}")
         return self.device.touch(position)
 
     def exist_img(
@@ -93,6 +111,7 @@ class BasePage:
         try:
             position = self.wait_img(image_path, timeout)
         except LookupError:
+            print(f"未找到图片：{image_path}（等待 {timeout} 秒）")
             return False
         self.device.touch(position)
         return True
@@ -143,6 +162,48 @@ class BasePage:
                 )
             time.sleep(0.25)
 
+
+    def read_text_in_region(
+        self,
+        top_left: tuple[float, float],
+        bottom_right: tuple[float, float],
+        timeout: float = 5,
+    ) -> str:
+        """识别指定相对区域内的文字并返回，移除数字千位分隔逗号。"""
+        if len(top_left) != 2 or len(bottom_right) != 2:
+            raise ValueError("top_left 和 bottom_right 都必须是 (x, y) 坐标")
+        if not all(0 <= value <= 1 for value in (*top_left, *bottom_right)):
+            raise ValueError("相对坐标必须在 0 到 1 之间")
+        if bottom_right[0] <= top_left[0] or bottom_right[1] <= top_left[1]:
+            raise ValueError(f"无效的识别区域：{top_left!r}, {bottom_right!r}")
+
+        deadline = time.monotonic() + min(timeout, 5)
+        while True:
+            screenshot = self._snapshot_upright()
+            height, width = screenshot.shape[:2]
+            left = round(top_left[0] * width)
+            top = round(top_left[1] * height)
+            right = round(bottom_right[0] * width)
+            bottom = round(bottom_right[1] * height)
+            if right <= left or bottom <= top:
+                raise ValueError("相对坐标换算后的识别区域为空")
+
+            cropped = screenshot[top:bottom, left:right]
+            if self._ocr is None:
+                self._ocr = RapidOCR()
+            result = self._ocr(cropped)
+            if result and result.txts:
+                text = "".join(str(item) for item in result.txts)
+                text = "".join(text.split()).replace(",", "").replace("，", "")
+                if text:
+                    return text
+
+            if time.monotonic() >= deadline:
+                raise LookupError(
+                    f"在区域 {top_left!r} 到 {bottom_right!r} 内未识别到文字"
+                )
+            time.sleep(0.25)
+
     def touch_img_in_row(
         self,
         image_path: str | Path,
@@ -176,41 +237,6 @@ class BasePage:
                     f'未找到图片“{row_image_path}”所在行的按钮：{image_path}'
                 )
             time.sleep(0.25)
-
-    def touch_extreme_img(
-        self,
-        image_path: str | Path,
-        direction: str = "top",
-        timeout: float = 5,
-    ) -> tuple[int, int]:
-        """等待匹配图片出现，再点击最靠近指定屏幕边缘的一项。"""
-        direction_axes = {
-            "top": (1, False),
-            "bottom": (1, True),
-            "left": (0, False),
-            "right": (0, True),
-        }
-        if direction not in direction_axes:
-            raise ValueError(
-                f"direction must be one of {', '.join(direction_axes)}, got: {direction!r}"
-            )
-
-        template = Template(str(image_path))
-        deadline = time.monotonic() + timeout
-        while True:
-            matches = template.match_all_in(self._snapshot_upright())
-            if matches:
-                axis, choose_largest = direction_axes[direction]
-                match = (max if choose_largest else min)(
-                    matches,
-                    key=lambda item: item["result"][axis],
-                )
-                return self.device.touch(match["result"])
-
-            if time.monotonic() >= deadline:
-                raise LookupError(f'等待图片模板超时，屏幕上未找到：{image_path}')
-            time.sleep(0.25)
-
 
     def wait_img(
         self, image_path: str | Path, timeout: float = 5, threshold: float = 0.7
@@ -250,21 +276,7 @@ class BasePage:
                 return None
             time.sleep(0.25)
 
-    def click_text(self, text: str, timeout: float = 5) -> bool:
-        """识别屏幕上的文字，并使用已连接的 Airtest 设备点击文字中心。"""
-        position = self._find_text_position(text, timeout)
-        if position is None:
-            raise LookupError(f'屏幕上未找到文字：{text}')
-        self.device.touch(position)
-        return True
 
-    def touch_text_if_present(self, text: str, timeout: float = 1) -> bool:
-        """若文字在超时前出现则点击，否则不执行操作。"""
-        position = self._find_text_position(text, timeout)
-        if position is None:
-            return False
-        self.device.touch(position)
-        return True
 
     def touch_blank(self):
         """关闭所有可见的“点击空白处”提示；提示出现零次也是正常情况。"""

@@ -20,7 +20,7 @@ class TestPrepare:
         gm_page.input("关闭羊皮纸", 1)
         gm_page.input("显示topdebug", 1)
         gm_page.input("行军速度 10倍", 1)
-        gm_page.input("我要技能", 1)
+        # gm_page.input("我要技能", 1)
         gm_page.input("训练基地", 1)
         gm_page.input("军事营地", 1)
         gm_page.exit()
