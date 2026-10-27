@@ -2,3 +2,4 @@ pytest
 airtest
 rapidocr
 onnxruntime
+
