@@ -46,17 +46,18 @@ class HeroPage(BasePage):
             if self.exist_img("地图_主城标志.png"):
                 self.touch_img("地图_英雄标志.png")
 
-    def read_skill_exp(self):
-        return  self.read_text_in_region(rc(1215,20),rc(1350,50))
-    def red_gold_skill_page(self):
-        return self.read_text_in_region(rc(1275, 12), rc(1400, 58))
-    def red_silver_skill_page(self):
-        return self.read_text_in_region(rc(1105, 12), rc(1230, 58))
-    def enter_skill_exp(self):
+    def read_skill_exp_info_page(self):
+        return  int(self.read_text_in_region(rc(1215,20),rc(1350,50)))
+
+    def enter_exp_page(self):
         self.device.touch(rc(1295,35))
 
-    def enter_skill_page(self):
+    def enter_paper_page(self):
         self.device.touch(rc(1480,35))
+
+    def enter_skill_page(self):
+        self.device.touch(rc(1130,760))
+
 
 
 

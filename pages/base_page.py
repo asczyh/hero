@@ -290,3 +290,6 @@ class BasePage:
             count += 1
             time.sleep(0.3)
         return count
+
+    def confirm(self):
+        self.touch_img("确定.png")
